@@ -1,0 +1,26 @@
+{
+  "version": "next_round",
+  "source": "Option A - Tight bracket around HighMar winner (44%)",
+  "recommendation": "Apply these margins to your 3 endpoints for the next test cycle",
+  "endpoints": [
+    {
+      "name": "Endpoint_1",
+      "margin_pct": 42,
+      "replaces": "LowMar",
+      "note": "Just below current best"
+    },
+    {
+      "name": "Endpoint_2",
+      "margin_pct": 45,
+      "replaces": "MidMar",
+      "note": "At current best"
+    },
+    {
+      "name": "Endpoint_3",
+      "margin_pct": 48,
+      "replaces": "HighMar",
+      "note": "Explore higher"
+    }
+  ],
+  "applied_date": null
+}

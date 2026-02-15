@@ -1,0 +1,4 @@
+Demand Name,Demand ID,Cost,Revenue,Profit $,Margin %,Demand Bid Rate %,Supply Responses,Supply Impressions,Demand Win Rate %,sRPM $,Supply Bidfloor,Our Bidfloor,Demand eCPM
+Criteo - Banner - US-E S_O LowMar,3168,0.23,0.35,0.12,34.68,1.4,21826,742,78.7515,0.4227,0.32,0.49,0.47
+Criteo - Banner - US-E HighMar,3167,0.15,0.28,0.13,45.16,2.92,43316,632,94.3055,0.2219,0.33,0.58,0.44
+Criteo - Banner - US-E S_O MidMar,3169,0.07,0.11,0.05,40.23,1.5,11368,315,86.064,0.2275,0.26,0.44,0.36

@@ -1,0 +1,23 @@
+{
+  "baseline_margin": 35.0,
+  "last_safe_margin": 35.0,
+  "current_margin": 35.0,
+  "step": 1.0,
+  "baseline_srpm": 0.43343653250773995,
+  "baseline_bid_rate": 2.26,
+  "baseline_profit": 0.2899999999999999,
+  "history": [
+    {
+      "margin": 34.48,
+      "impressions": 1938.0,
+      "revenue": 0.84,
+      "cost": 0.55,
+      "bid_rate": 2.26,
+      "profit": 0.2899999999999999,
+      "profit_per_1k": 0.14963880288957684,
+      "revenue_per_1k": 0.43343653250773995,
+      "cost_per_1k": 0.2837977296181631,
+      "srpm": 0.43343653250773995
+    }
+  ]
+}
