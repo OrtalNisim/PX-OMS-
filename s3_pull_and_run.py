@@ -87,75 +87,81 @@ if recommended:
 else:
     print(f"Recommended: KEEP CONTROL ({control.name if control else 'N/A'})")
 
-# ── STEP 4: Run optimizer per arm and generate recommendations ──
-print("\n=== STEP 4: Generating margin recommendations ===")
-from margin_optimizer import MarginOptimizer
+# ── STEP 4: Generate margin recommendations using cross-arm analysis ──
+print("\n=== STEP 4: Generating margin recommendations (cross-arm analysis) ===")
 
 # Build a lookup: demand_name -> row from last_hour_rows
 row_by_name = {}
 for r in last_hour_rows:
     row_by_name[r["Demand Name"].strip()] = r
 
-recommendations = []
+# Current margins = actual margins from the data CSV (what's running on the endpoints)
+print("\n  Current margins running on endpoints:")
 for m in ms_sorted:
-    safe_name = m.name.replace(" ", "_").replace("/", "_")
-    state_path = Path(__file__).parent / f"optimizer_state_{safe_name}.json"
-    # Write a fresh initial state locally so optimizer does NOT fall back to
-    # the shared S3 state key (which would mix up per-arm baselines).
-    fresh_state = {
-        "baseline_margin": m.margin_pct,
-        "last_safe_margin": m.margin_pct,
-        "current_margin": m.margin_pct,
-        "step": 1.0,
-        "baseline_srpm": None,
-        "baseline_bid_rate": None,
-        "baseline_profit": None,
-        "history": [],
-    }
-    with open(state_path, "w", encoding="utf-8") as sf:
-        json.dump(fresh_state, sf, indent=2)
+    print(f"    {m.name}: {m.margin_pct}%")
 
-    opt = MarginOptimizer(
-        baseline_margin=m.margin_pct,
-        step=1.0,
-        min_step=0.25,
-        min_impressions_per_decision=0,
-        min_profit_per_decision=0.0,
-        guardrail_drop_pct=10.0,
-        min_profit_improvement_pct=2.0,
-        state_path=state_path,
-    )
+# Sort arms by margin% ascending to analyze the trend
+arms_by_margin = sorted(ms_sorted, key=lambda x: x.margin_pct)
 
+# Compute profit-per-margin-point between adjacent arms
+print("\n  Cross-arm profit trend:")
+deltas = []
+for i in range(1, len(arms_by_margin)):
+    prev_arm = arms_by_margin[i - 1]
+    curr_arm = arms_by_margin[i]
+    margin_gap = curr_arm.margin_pct - prev_arm.margin_pct
+    profit_gap = curr_arm.profit_per_1k_impr - prev_arm.profit_per_1k_impr
+    profit_per_point = profit_gap / margin_gap if margin_gap > 0 else 0
+    deltas.append(profit_per_point)
+    print(f"    {prev_arm.name} ({prev_arm.margin_pct:.1f}%) -> {curr_arm.name} ({curr_arm.margin_pct:.1f}%): "
+          f"margin +{margin_gap:.2f}pp, profit/1k +${profit_gap:.4f} "
+          f"(${profit_per_point:.4f}/pp)")
+
+# Determine trend: is profit still growing with margin?
+profit_still_growing = all(d > 0 for d in deltas) if deltas else False
+avg_margin_gap = (arms_by_margin[-1].margin_pct - arms_by_margin[0].margin_pct) / max(len(arms_by_margin) - 1, 1)
+
+# sRPM guardrail: check if highest-margin arm's sRPM is still acceptable vs control
+srpm_guardrail_pct = 90.0  # sRPM must stay above 90% of control
+control_srpm = control.srpm if control else arms_by_margin[0].srpm
+best_arm = arms_by_margin[-1]  # highest margin arm
+srpm_ratio = (best_arm.srpm / control_srpm * 100) if control_srpm > 0 else 100.0
+
+print(f"\n  Winner: {recommended.name if recommended else winner.name}")
+print(f"  Profit trend: {'still growing ↑' if profit_still_growing else 'plateauing/declining'}")
+print(f"  sRPM ratio (best vs control): {srpm_ratio:.1f}% (guardrail: >={srpm_guardrail_pct}%)")
+print(f"  Avg margin gap between arms: {avg_margin_gap:.2f}pp")
+
+print(f"\n  Next round strategy:")
+
+# Build next-round bracket AROUND the winner:
+# - LowMar:  below the winner (confirm floor)
+# - MidMar:  at the winner (confirm it holds)
+# - HighMar: above the winner (explore higher)
+low_margin = round(best_arm.margin_pct - avg_margin_gap, 0)
+mid_margin = round(best_arm.margin_pct, 0)
+high_margin = round(best_arm.margin_pct + avg_margin_gap, 0)
+print(f"  Bracketing around winner ({best_arm.margin_pct:.1f}%): below / at / above")
+
+bracket = [low_margin, mid_margin, high_margin]
+print(f"  Next round bracket: LowMar={low_margin}%, MidMar={mid_margin}%, HighMar={high_margin}%")
+
+recommendations = []
+for i, m in enumerate(arms_by_margin):  # sorted by margin ascending
     row = row_by_name.get(m.name, last_hour_rows[0])
-    bid_rate = float(row.get("Demand Bid Rate %", 0) or 0)
-    revenue = float(row.get("Revenue", 0) or 0)
-    cost = float(row.get("Cost", 0) or 0)
     demand_id = row.get("Demand ID", "")
-
-    next_margin = opt.suggest_next_margin(
-        margin=m.margin_pct,
-        impressions=m.impressions,
-        revenue=revenue,
-        cost=cost,
-        bid_rate=bid_rate,
-        responses=m.responses,
-    )
-
+    next_margin = bracket[i]
     recommendations.append({
         "demand_id": demand_id,
         "demand_name": m.name,
-        "current_margin_pct": m.margin_pct,
-        "recommended_margin_pct": round(next_margin, 2),
-        "profit_per_1k": round(m.profit_per_1k_impr, 4),
-        "srpm": round(m.srpm, 4),
-        "impressions": int(m.impressions),
+        "recommended_margin_pct": next_margin,
     })
-    print(f"  {m.name}: current={m.margin_pct:.2f}% -> recommended={next_margin:.2f}%")
+    print(f"  {m.name}: current={m.margin_pct:.2f}% -> recommended={next_margin}%")
 
 # ── STEP 5: Write recommendations CSV locally ──
 print("\n=== STEP 5: Writing recommendations CSV ===")
 reco_csv = Path(__file__).parent / "margin_recommendations_s3.csv"
-fieldnames = ["demand_id", "demand_name", "current_margin_pct", "recommended_margin_pct", "profit_per_1k", "srpm", "impressions"]
+fieldnames = ["demand_id", "demand_name", "recommended_margin_pct"]
 with open(reco_csv, "w", newline="", encoding="utf-8") as f:
     writer = csv.DictWriter(f, fieldnames=fieldnames)
     writer.writeheader()

@@ -154,11 +154,13 @@ class MarginOptimizer:
         """
         wm = self.update(margin, impressions, revenue, cost, bid_rate, responses)
 
-        # Initialize baseline from first window (no minimum volume required)
+        # Initialize baseline from first window and propose first exploration step
         if self._state.baseline_srpm is None:
             self._state.baseline_srpm = wm.srpm
             self._state.baseline_bid_rate = wm.bid_rate
             self._state.baseline_profit = wm.profit
+            self._state.last_safe_margin = margin
+            self._state.current_margin = margin + self._state.step
             self._save_state()
             return self._state.current_margin
 
