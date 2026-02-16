@@ -1,0 +1,24 @@
+# Secrets & credentials
+.env
+
+# Optimizer state files (generated at runtime)
+optimizer_state*.json
+
+# Data files downloaded from S3
+margin_data_from_s3.csv
+margin_data_last_hour.csv
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo

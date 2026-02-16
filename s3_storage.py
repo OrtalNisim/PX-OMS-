@@ -6,6 +6,15 @@ import json
 import os
 from datetime import datetime
 from typing import Any, Dict, Optional
+from pathlib import Path
+
+# Load .env (if present) so environment variables in your project root are available.
+try:
+    from dotenv import load_dotenv
+    load_dotenv(Path(__file__).parent / ".env")
+except Exception:
+    # python-dotenv not installed or .env missing — fall back to existing environment
+    pass
 
 S3_BUCKET = os.environ.get("S3_BUCKET", "")
 S3_PREFIX = os.environ.get("S3_PREFIX", "margin-optimizer/")
@@ -14,7 +23,15 @@ S3_PREFIX = os.environ.get("S3_PREFIX", "margin-optimizer/")
 def _client():
     """Lazy import to avoid boto3 dependency when S3 is not used."""
     import boto3
-    return boto3.client("s3")
+    # Allow optional region and custom S3 endpoint (for MinIO or compat services)
+    region = os.environ.get("AWS_REGION") or os.environ.get("AWS_DEFAULT_REGION")
+    endpoint = os.environ.get("S3_ENDPOINT_URL")  # optional custom endpoint
+    kwargs = {}
+    if region:
+        kwargs["region_name"] = region
+    if endpoint:
+        kwargs["endpoint_url"] = endpoint
+    return boto3.client("s3", **kwargs)
 
 
 def _enabled() -> bool:

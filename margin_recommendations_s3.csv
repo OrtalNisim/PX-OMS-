@@ -1,0 +1,4 @@
+demand_id,demand_name,current_margin_pct,recommended_margin_pct,profit_per_1k,srpm,impressions
+3167,Criteo - Banner - US-E HighMar,57.83,57.83,0.6552,1.1278,931
+3169,Criteo - Banner - US-E S_O MidMar,54.14,54.14,0.5402,1.005,796
+3168,Criteo - Banner - US-E S_O LowMar,50.2,50.2,0.4588,0.9042,741
